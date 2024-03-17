@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+requests
+redis
+sqlmodel
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+aiohttp[speedups]
+python-multipart
+Pillow
+dashscope
