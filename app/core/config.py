@@ -19,10 +19,6 @@ class Config(BaseSettings):
         default=["http://localhost:8000", "http://127.0.0.1:8000"]
     )
 
-    # Server settings
-    listen_host: str = Field(default="0.0.0.0")
-    listen_port: int = Field(default=8000, ge=0, le=65535)
-
     # SQL settings
     database_url: str = Field(default="sqlite:///./test.db")
 
