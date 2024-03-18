@@ -5,6 +5,7 @@ import os
 
 
 class Config(BaseSettings):
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # Project settings
@@ -15,9 +16,7 @@ class Config(BaseSettings):
     api_base_url: str = Field(default="http://127.0.0.1:8000")
     api_version: str = Field(default="v1")
     api_prefix: str = Field(default="/api/v1")
-    cors_origins: list[str] = Field(
-        default=["http://localhost:8000", "http://127.0.0.1:8000"]
-    )
+    cors_origins: str = Field(default="http://127.0.0.1:8000,http://localhost:8000")
 
     # SQL settings
     database_url: str = Field(default="sqlite:///./test.db")
