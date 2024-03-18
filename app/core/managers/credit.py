@@ -2,7 +2,7 @@ from sqlmodel import Session
 from app.models.credit import CreditRecord
 from app.models.user import User
 from app.core.connections.sql import sqlalchemy_engine
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 
 
 class CreditNotEnough(HTTPException):
@@ -10,7 +10,7 @@ class CreditNotEnough(HTTPException):
         self.user = user
         self.amount = amount
         super().__init__(
-            status_code=402,
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail=f"User {user.username} has only {user.credits_left} credits left, not enough for {amount}",
         )
 

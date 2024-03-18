@@ -8,7 +8,7 @@ from aio_pika.abc import (
     AbstractChannel,
     AbstractQueue,
 )
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 import asyncio
 
 
@@ -25,7 +25,8 @@ class TaskStreaming:
     async def start(self):
         if redis_client.hget("streaming_locks", self.task_id) is not None:
             raise HTTPException(
-                status_code=422, detail=f"Task {self.task_id} is already being streamed"
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Task {self.task_id} is already being streamed",
             )
         redis_client.hset("streaming_locks", self.task_id, 1)
         self.connection = await get_rabbitmq_connection()

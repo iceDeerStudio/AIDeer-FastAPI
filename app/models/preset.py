@@ -15,6 +15,7 @@ class PresetVisibility(str, Enum):
     unlisted = "unlisted"
     public = "public"
 
+
 class PresetModel(str, Enum):
     qwen_turbo = "qwen-turbo"
     qwen_plus = "qwen-plus"

@@ -1,14 +1,19 @@
 from fastapi import APIRouter, HTTPException, status
 from app.models.chat import Chat, ChatCreate, ChatRead, ChatVisibility
-from app.models.server import ServerMessage
+from app.models.server import ServerMessage, ExceptionDetail
 from app.api.deps import SessionDep, UserDep
+from app.api.resps import ExceptionResponse
 from app.core.managers.message import MessageStorage
 from sqlmodel import select
 
 router = APIRouter()
 
 
-@router.get("", response_model=list[ChatRead])
+@router.get(
+    "",
+    response_model=list[ChatRead],
+    responses=ExceptionResponse.get_responses(401, 403),
+)
 async def list_chats(
     session: SessionDep, user: UserDep, offset: int = 0, limit: int = 10
 ):
@@ -24,7 +29,9 @@ async def list_chats(
     ]
 
 
-@router.post("", response_model=ChatRead)
+@router.post(
+    "", response_model=ChatRead, responses=ExceptionResponse.get_responses(401, 403)
+)
 async def create_chat(session: SessionDep, user: UserDep, chat: ChatCreate):
     db_chat = Chat(**chat.model_dump(), owner_id=user.id)
     session.add(db_chat)
@@ -37,11 +44,17 @@ async def create_chat(session: SessionDep, user: UserDep, chat: ChatCreate):
     }
 
 
-@router.get("/{chat_id}", response_model=ChatRead)
+@router.get(
+    "/{chat_id}",
+    response_model=ChatRead,
+    responses=ExceptionResponse.get_responses(401, 403, 404),
+)
 async def read_chat(chat_id: str, session: SessionDep, user: UserDep):
     chat = session.get(Chat, chat_id)
     if chat is None:
-        raise HTTPException(status_code=404, detail="Chat not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
+        )
     if chat.owner_id != user.id:
         if chat.visibility == ChatVisibility.private:
             raise HTTPException(
@@ -65,13 +78,19 @@ async def read_chat(chat_id: str, session: SessionDep, user: UserDep):
     }
 
 
-@router.put("/{chat_id}", response_model=ChatRead)
+@router.put(
+    "/{chat_id}",
+    response_model=ChatRead,
+    responses=ExceptionResponse.get_responses(401, 403, 404),
+)
 async def update_chat(
     chat_id: str, chat: ChatCreate, session: SessionDep, user: UserDep
 ):
     db_chat = session.get(Chat, chat_id)
     if db_chat is None:
-        raise HTTPException(status_code=404, detail="Chat not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
+        )
     if db_chat.owner_id != user.id and user.permission < 2:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -88,11 +107,17 @@ async def update_chat(
     }
 
 
-@router.delete("/{chat_id}", response_model=ServerMessage)
+@router.delete(
+    "/{chat_id}",
+    response_model=ServerMessage,
+    responses=ExceptionResponse.get_responses(401, 403, 404),
+)
 async def delete_chat(chat_id: str, session: SessionDep, user: UserDep):
     chat = session.get(Chat, chat_id)
     if chat is None:
-        raise HTTPException(status_code=404, detail="Chat not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
+        )
     if chat.owner_id != user.id and user.permission < 2:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+import base64
+import os
 
 
 class Config(BaseSettings):
@@ -34,7 +36,7 @@ class Config(BaseSettings):
     rabbitmq_url: str = Field(default="amqp://guest:guest@localhost/")
 
     # JWT settings
-    jwt_secret: str = ""
+    jwt_secret: str = Field(default=base64.b64encode(os.urandom(32)).decode())
     jwt_algorithm: str = Field(default="HS256")
     jwt_access_token_expires: int = Field(default=60 * 24 * 3, ge=0)
     jwt_wechat_access_token_expires: int = Field(default=60 * 24, ge=0)
@@ -50,7 +52,7 @@ class Config(BaseSettings):
 
     # Admin credentials
     admin_user: str = Field(default="admin", max_length=50, min_length=2)
-    admin_passwd: str = Field(default="admin123456", max_length=255, min_length=6)
+    admin_passwd: str = Field(default="admin123", max_length=255, min_length=6)
 
     # Static files settings
     static_dir: str = Field(default="static")

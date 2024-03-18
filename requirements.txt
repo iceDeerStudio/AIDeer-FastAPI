@@ -10,3 +10,4 @@ aiohttp[speedups]
 python-multipart
 Pillow
 dashscope
+aio-pika

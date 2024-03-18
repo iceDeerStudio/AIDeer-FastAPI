@@ -1,7 +1,7 @@
 from aiohttp import ClientSession
 from app.core.config import config
 from app.core.connections.redis import redis_client
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 import hashlib
 import requests
 
@@ -19,12 +19,13 @@ class Wechat:
         response = requests.get(url)
         if response.status_code != 200:
             raise HTTPException(
-                status_code=500, detail=f"WeChat server error: {response.status_code}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"WeChat server error: {response.status_code}",
             )
         data = response.json()
         if "errcode" in data and data["errcode"] != 0:
             raise HTTPException(
-                status_code=500,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"WeChat server error: {data['errcode']}, {data['errmsg']}",
             )
         openid = data["openid"]
@@ -40,14 +41,15 @@ class Wechat:
         response = requests.get(url)
         if response.status_code != 200:
             raise HTTPException(
-                status_code=500, detail=f"WeChat server error: {response.status_code}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"WeChat server error: {response.status_code}",
             )
         data = response.json()
         if "errcode" in data and data["errcode"] != 0:
             if data["errcode"] == 87009:
                 return False
             raise HTTPException(
-                status_code=500,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"WeChat server error: {data['errcode']}, {data['errmsg']}",
             )
         return True
@@ -60,12 +62,13 @@ class Wechat:
         response = requests.get(url)
         if response.status_code != 200:
             raise HTTPException(
-                status_code=500, detail=f"WeChat server error: {response.status_code}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"WeChat server error: {response.status_code}",
             )
         data = response.json()
         if "errcode" in data:
             raise HTTPException(
-                status_code=500,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"WeChat server error: {data['errcode']}, {data['errmsg']}",
             )
         redis_client.set(
@@ -101,13 +104,18 @@ class WechatAsync:
             async with session.get(url) as response:
                 if response.status != 200:
                     raise HTTPException(
-                        status_code=500,
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"WeChat server error: {response.status}",
                     )
                 data = await response.json()
                 if "errcode" in data and data["errcode"] != 0:
+                    if data["errcode"] == 40029:
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid code",
+                        )
                     raise HTTPException(
-                        status_code=500,
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"WeChat server error: {data['errcode']}, {data['errmsg']}",
                     )
                 openid = data["openid"]
@@ -125,7 +133,7 @@ class WechatAsync:
             async with session.get(url) as response:
                 if response.status != 200:
                     raise HTTPException(
-                        status_code=500,
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"WeChat server error: {response.status}",
                     )
                 data = await response.json()
@@ -133,7 +141,7 @@ class WechatAsync:
                     if data["errcode"] == 87009:
                         return False
                     raise HTTPException(
-                        status_code=500,
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"WeChat server error: {data['errcode']}, {data['errmsg']}",
                     )
                 return True
@@ -147,13 +155,13 @@ class WechatAsync:
             async with session.get(url) as response:
                 if response.status != 200:
                     raise HTTPException(
-                        status_code=500,
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"WeChat server error: {response.status}",
                     )
                 data = await response.json()
                 if "errcode" in data:
                     raise HTTPException(
-                        status_code=500,
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"WeChat server error: {data['errcode']}, {data['errmsg']}",
                     )
                 redis_client.set(

@@ -9,12 +9,15 @@ from app.models.preset import (
 )
 from app.models.server import ServerMessage
 from app.api.deps import SessionDep, UserDep
+from app.api.resps import ExceptionResponse
 from app.core.managers.message import MessageStorage
 
 router = APIRouter()
 
 
-@router.get("", response_model=list[PresetRead])
+@router.get(
+    "", response_model=list[PresetRead], responses=ExceptionResponse.get_responses(401)
+)
 async def list_presets(
     session: SessionDep, user: UserDep, offset: int = 0, limit: int = 10
 ):
@@ -42,7 +45,9 @@ async def list_presets(
     ]
 
 
-@router.post("", response_model=PresetRead)
+@router.post(
+    "", response_model=PresetRead, responses=ExceptionResponse.get_responses(401)
+)
 async def create_preset(session: SessionDep, user: UserDep, preset: PresetCreate):
     db_preset = Preset(
         **preset.model_dump(exclude={"parameters"}),
@@ -60,11 +65,17 @@ async def create_preset(session: SessionDep, user: UserDep, preset: PresetCreate
     }
 
 
-@router.get("/{preset_id}", response_model=PresetRead)
+@router.get(
+    "/{preset_id}",
+    response_model=PresetRead,
+    responses=ExceptionResponse.get_responses(401, 403, 404),
+)
 async def read_preset(preset_id: str, session: SessionDep, user: UserDep):
     preset = session.get(Preset, preset_id)
     if preset is None:
-        raise HTTPException(status_code=404, detail="Preset not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Preset not found"
+        )
     if preset.owner_id != user.id and preset.visibility == PresetVisibility.private:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -77,13 +88,19 @@ async def read_preset(preset_id: str, session: SessionDep, user: UserDep):
     }
 
 
-@router.put("/{preset_id}", response_model=PresetRead)
+@router.put(
+    "/{preset_id}",
+    response_model=PresetRead,
+    responses=ExceptionResponse.get_responses(401, 403, 404),
+)
 async def update_preset(
     preset_id: str, session: SessionDep, user: UserDep, preset: PresetCreate
 ):
     db_preset = session.get(Preset, preset_id)
     if db_preset is None:
-        raise HTTPException(status_code=404, detail="Preset not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Preset not found"
+        )
     if db_preset.owner_id != user.id and user.permission < 2:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -101,11 +118,17 @@ async def update_preset(
     }
 
 
-@router.delete("/{preset_id}", response_model=ServerMessage)
+@router.delete(
+    "/{preset_id}",
+    response_model=ServerMessage,
+    responses=ExceptionResponse.get_responses(401, 403, 404),
+)
 async def delete_preset(preset_id: str, session: SessionDep, user: UserDep):
     db_preset = session.get(Preset, preset_id)
     if db_preset is None:
-        raise HTTPException(status_code=404, detail="Preset not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Preset not found"
+        )
     if db_preset.owner_id != user.id and user.permission < 2:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
