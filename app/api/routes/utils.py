@@ -1,12 +1,11 @@
 from fastapi import APIRouter, HTTPException, status
 from app.api.deps import SessionDep
 from app.api.resps import ExceptionResponse
-from app.core.connections.sql import sqlalchemy_engine, init_db
+from app.core.connections.sql import sqlalchemy_engine, init_db, drop_db
 from app.core.config import config
 from app.core.security import get_password_hash
 from app.models.user import User, UserRead
 from app.models.server import ServerMessage
-from sqlmodel import SQLModel
 
 router = APIRouter()
 
@@ -42,5 +41,5 @@ async def create_admin(session: SessionDep):
 
 @router.get("/drop")
 async def drop():
-    SQLModel.metadata.drop_all(sqlalchemy_engine)
+    drop_db()
     return {"message": "Database dropped"}

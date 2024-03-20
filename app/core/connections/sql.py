@@ -19,3 +19,7 @@ def init_db():
     )
 
     SQLModel.metadata.create_all(sqlalchemy_engine)
+
+
+def drop_db():
+    SQLModel.metadata.drop_all(sqlalchemy_engine)
