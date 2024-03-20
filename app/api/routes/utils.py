@@ -1,35 +1,26 @@
 from fastapi import APIRouter, HTTPException, status
 from app.api.deps import SessionDep
-from app.core.connections.sql import sqlalchemy_engine
+from app.api.resps import ExceptionResponse
+from app.core.connections.sql import sqlalchemy_engine, init_db
 from app.core.config import config
 from app.core.security import get_password_hash
+from app.models.user import User, UserRead
+from app.models.server import ServerMessage
 from sqlmodel import SQLModel
-
-from app.models.user import *
-from app.models.server import *
-from app.models.security import *
-from app.models.chat import *
-from app.models.preset import *
-from app.models.message import *
-from app.models.credit import *
-from app.models.dashscope import *
-from app.models.task import *
 
 router = APIRouter()
 
 
-@router.get("/init")
+@router.get("/init", response_model=ServerMessage)
 async def init():
-    SQLModel.metadata.create_all(sqlalchemy_engine)
+    init_db()
     return {"message": "Database initialized"}
 
 
 @router.get(
     "/admin",
     response_model=UserRead,
-    responses={
-        500: {"description": "Admin credentials not set", "model": ExceptionDetail}
-    },
+    responses=ExceptionResponse.get_responses(500),
 )
 async def create_admin(session: SessionDep):
     if config.admin_user and config.admin_passwd:
