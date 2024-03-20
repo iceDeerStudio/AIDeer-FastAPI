@@ -4,6 +4,7 @@ from app.core.connections.redis import redis_client
 from fastapi import HTTPException, status
 import hashlib
 import requests
+import json
 
 
 class Wechat:
@@ -22,7 +23,10 @@ class Wechat:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"WeChat server error: {response.status_code}",
             )
-        data = response.json()
+        # Fuck, don't you know you have to use MIME type 'application/json' to transfer JSON data? Fuck you, WeChat. Fuck you, Tencent.
+        # 操你妈的，你他妈的不知道你要用 MIME 类型 'application/json' 来传输 JSON 数据吗？操你妈的，微信。操你妈的，腾讯。
+        # data = response.json()
+        data = json.loads(response.text)
         if "errcode" in data and data["errcode"] != 0:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -44,7 +48,10 @@ class Wechat:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"WeChat server error: {response.status_code}",
             )
-        data = response.json()
+        # Fuck, don't you know you have to use MIME type 'application/json' to transfer JSON data? Fuck you, WeChat. Fuck you, Tencent.
+        # 操你妈的，你他妈的不知道你要用 MIME 类型 'application/json' 来传输 JSON 数据吗？操你妈的，微信。操你妈的，腾讯。
+        # data = response.json()
+        data = json.loads(response.text)
         if "errcode" in data and data["errcode"] != 0:
             if data["errcode"] == 87009:
                 return False
@@ -65,7 +72,10 @@ class Wechat:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"WeChat server error: {response.status_code}",
             )
-        data = response.json()
+        # Fuck, don't you know you have to use MIME type 'application/json' to transfer JSON data? Fuck you, WeChat. Fuck you, Tencent.
+        # 操你妈的，你他妈的不知道你要用 MIME 类型 'application/json' 来传输 JSON 数据吗？操你妈的，微信。操你妈的，腾讯。
+        # data = response.json()
+        data = json.loads(response.text)
         if "errcode" in data:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -107,7 +117,10 @@ class WechatAsync:
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"WeChat server error: {response.status}",
                     )
-                data = await response.json()
+                # Fuck, don't you know you have to use MIME type 'application/json' to transfer JSON data? Fuck you, WeChat. Fuck you, Tencent.
+                # 操你妈的，你他妈的不知道你要用 MIME 类型 'application/json' 来传输 JSON 数据吗？操你妈的，微信。操你妈的，腾讯。
+                # data = await response.json()
+                data = json.loads(await response.text())
                 if "errcode" in data and data["errcode"] != 0:
                     if data["errcode"] == 40029:
                         raise HTTPException(
@@ -136,7 +149,10 @@ class WechatAsync:
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"WeChat server error: {response.status}",
                     )
-                data = await response.json()
+                # Fuck, don't you know you have to use MIME type 'application/json' to transfer JSON data? Fuck you, WeChat. Fuck you, Tencent.
+                # 操你妈的，你他妈的不知道你要用 MIME 类型 'application/json' 来传输 JSON 数据吗？操你妈的，微信。操你妈的，腾讯。
+                # data = await response.json()
+                data = json.loads(await response.text())
                 if "errcode" in data and data["errcode"] != 0:
                     if data["errcode"] == 87009:
                         return False
@@ -158,7 +174,10 @@ class WechatAsync:
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"WeChat server error: {response.status}",
                     )
-                data = await response.json()
+                # Fuck, don't you know you have to use MIME type 'application/json' to transfer JSON data? Fuck you, WeChat. Fuck you, Tencent.
+                # 操你妈的，你他妈的不知道你要用 MIME 类型 'application/json' 来传输 JSON 数据吗？操你妈的，微信。操你妈的，腾讯。
+                # data = await response.json()
+                data = json.loads(await response.text())
                 if "errcode" in data:
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
