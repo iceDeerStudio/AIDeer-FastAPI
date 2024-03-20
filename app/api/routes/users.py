@@ -28,13 +28,17 @@ async def list_users(
 
 
 @router.post(
-    "", response_model=UserRead, responses=ExceptionResponse.get_responses(403)
+    "", response_model=UserRead, responses=ExceptionResponse.get_responses(400, 403)
 )
 async def create_user(session: SessionDep, user: UserCreate):
     if user.permission >= 2:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions: Cannot create admin user",
+        )
+    if session.exec(select(User).where(User.username == user.username)).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists"
         )
     password_hash = get_password_hash(user.password)
     db_user = User(**user.model_dump(), password_hash=password_hash)
@@ -141,7 +145,7 @@ async def read_user(_user: UserDep, user_id: int, session: SessionDep):
 @router.put(
     "/{user_id}",
     response_model=UserRead,
-    responses=ExceptionResponse.get_responses(401, 403, 404),
+    responses=ExceptionResponse.get_responses(400, 401, 403, 404),
 )
 async def update_user(
     user_id: int, user: UserBase, session: SessionDep, current_user: UserDep
@@ -161,6 +165,12 @@ async def update_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions: You cannot set user permission to admin",
         )
+    if user.username is not None and user.username != db_user.username:
+        if session.exec(select(User).where(User.username == user.username)).first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already exists",
+            )
     db_user.sqlmodel_update(user.model_dump(exclude_unset=True))
     session.add(db_user)
     session.commit()
