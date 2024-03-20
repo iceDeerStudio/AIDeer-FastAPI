@@ -46,7 +46,7 @@ async def create_task(
     uuid = str(uuid4())
     TaskManager.set_task(uuid, TaskStatus.pending)
     textgen = ChatGeneration(user_id=user.id, task_id=uuid, chat_id=task.chat_id)
-    background_tasks.add_task(textgen.start)
+    background_tasks.add_task(textgen.run)
     return Task(task_id=uuid, status=TaskStatus.pending)
 
 
@@ -83,7 +83,6 @@ async def stream_task(task_id: str):
     task = TaskManager.get_task(task_id)
     if task.status != TaskStatus.failed:
         task_streaming = TaskStreaming(task_id)
-        await task_streaming.start()
         headers = {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
