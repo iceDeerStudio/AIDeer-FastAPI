@@ -18,7 +18,7 @@ class CreditRecordBase(SQLModel):
     create_time: datetime = Field(
         title="Create time",
         description="The time when the credit record is created",
-        default=datetime.now(),
+        default_factory=datetime.now,
     )
 
 

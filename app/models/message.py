@@ -37,7 +37,7 @@ class Message(SQLModel):
     create_time: datetime = Field(
         title="Create time",
         description="The time when the message is created",
-        default=datetime.now(),
+        default_factory=datetime.now,
     )
 
 
