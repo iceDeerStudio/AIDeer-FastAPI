@@ -5,6 +5,7 @@ from app.api.deps import SessionDep, UserDep
 from app.api.resps import ExceptionResponse
 from app.core.managers.message import MessageStorage
 from sqlmodel import select
+from datetime import datetime
 
 router = APIRouter()
 
@@ -97,6 +98,7 @@ async def update_chat(
             detail="Insufficient permissions: You cannot update other user's chat",
         )
     db_chat.sqlmodel_update(chat.model_dump(exclude_unset=True))
+    db_chat.update_time = datetime.now()
     session.add(db_chat)
     session.commit()
     session.refresh(db_chat)

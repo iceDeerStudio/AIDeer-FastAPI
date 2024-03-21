@@ -11,6 +11,7 @@ from app.models.server import ServerMessage
 from app.api.deps import SessionDep, UserDep
 from app.api.resps import ExceptionResponse
 from app.core.managers.message import MessageStorage
+from datetime import datetime
 
 router = APIRouter()
 
@@ -123,6 +124,7 @@ async def update_preset(
         )
     db_preset.sqlmodel_update(preset.model_dump(exclude={"parameters"}))
     db_preset.parameters = preset.parameters.model_dump_json()
+    db_preset.update_time = datetime.now()
     session.commit()
     session.refresh(db_preset)
     MessageStorage.set_messages(db_preset.id, preset.messages)
