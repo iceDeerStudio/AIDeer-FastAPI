@@ -6,6 +6,7 @@ from app.core.config import config
 from app.core.security import get_password_hash
 from app.models.user import User, UserRead
 from app.models.server import ServerMessage
+from sqlmodel import select
 
 router = APIRouter()
 
@@ -19,10 +20,15 @@ async def init():
 @router.get(
     "/admin",
     response_model=UserRead,
-    responses=ExceptionResponse.get_responses(500),
+    responses=ExceptionResponse.get_responses(400, 500),
 )
 async def create_admin(session: SessionDep):
     if config.admin_user and config.admin_passwd:
+        if session.exec(select(User).where(User.username == config.admin_user)).first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Admin user already exists",
+            )
         password_hash = get_password_hash(config.admin_passwd)
         admin = User(
             username=config.admin_user,

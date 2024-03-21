@@ -46,9 +46,14 @@ async def list_presets(
 
 
 @router.post(
-    "", response_model=PresetRead, responses=ExceptionResponse.get_responses(401)
+    "", response_model=PresetRead, responses=ExceptionResponse.get_responses(401, 403)
 )
 async def create_preset(session: SessionDep, user: UserDep, preset: PresetCreate):
+    if preset.visibility == PresetVisibility.public and user.permission < 2:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions: You cannot create public presets",
+        )
     db_preset = Preset(
         **preset.model_dump(exclude={"parameters"}),
         parameters=preset.parameters.model_dump_json(),
@@ -106,6 +111,16 @@ async def update_preset(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions: You cannot update other users' presets",
         )
+    if db_preset.visibility == PresetVisibility.public and user.permission < 2:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions: You cannot update public presets",
+        )
+    if preset.visibility == PresetVisibility.public and user.permission < 2:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions: You cannot set preset visibility to public",
+        )
     db_preset.sqlmodel_update(preset.model_dump(exclude={"parameters"}))
     db_preset.parameters = preset.parameters.model_dump_json()
     session.commit()
@@ -133,6 +148,11 @@ async def delete_preset(preset_id: str, session: SessionDep, user: UserDep):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions: You cannot delete other users' presets",
+        )
+    if db_preset.visibility == PresetVisibility.public and user.permission < 2:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions: You cannot delete public presets",
         )
     session.delete(db_preset)
     session.commit()

@@ -4,6 +4,7 @@ from typing import Optional
 
 class PasswordUpdate(SQLModel):
     old_password: Optional[str] = Field(
+        default=None,
         max_length=255,
         min_length=6,
         title="Old password",

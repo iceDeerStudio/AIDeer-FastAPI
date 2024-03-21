@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import datetime
 from uuid import UUID, uuid4
 from enum import Enum
+import random
 
 
 class PresetType(str, Enum):
@@ -26,36 +27,46 @@ class PresetModel(str, Enum):
 
 class PresetParameters(SQLModel):
     model: Optional[PresetModel] = Field(
-        default=None,
-        nullable=True,
+        default=PresetModel.qwen_turbo,
         title="Model name",
         description="Model to use for generation",
     )
     seed: Optional[int] = Field(
+        default=random.randint(0, 2**64 - 1),
         ge=0,
         le=2**64 - 1,
         title="Random seed",
         description="Random seed for generation",
     )
     max_tokens: Optional[int] = Field(
+        default=1500,
         gt=0,
         le=2000,
         title="Max tokens",
         description="Maximum number of tokens to generate",
     )
     top_p: Optional[float] = Field(
-        gt=0, lt=1, title="Top p", description="Top p for nucleus sampling"
+        default=0.5, gt=0, lt=1, title="Top p", description="Top p for nucleus sampling"
     )
     top_k: Optional[int] = Field(
-        gt=0, le=100, title="Top k", description="Top k for nucleus sampling"
+        default=None,
+        gt=0,
+        le=100,
+        title="Top k",
+        description="Top k for nucleus sampling",
     )
     repetition_penalty: Optional[float] = Field(
+        default=1.1,
         ge=0,
         title="Repetition penalty",
         description="Repetition penalty for generation",
     )
     temperature: Optional[float] = Field(
-        ge=0, lt=2, title="Temperature", description="Temperature for generation"
+        default=0.85,
+        ge=0,
+        lt=2,
+        title="Temperature",
+        description="Temperature for generation",
     )
 
 
@@ -100,7 +111,7 @@ class Preset(PresetBase, table=True):
 
 class PresetCreate(PresetBase):
     messages: "Messages" = Field(title="Messages", description="Messages in the preset")
-    parameters: Optional[PresetParameters] = Field(
+    parameters: "PresetParameters" = Field(
         default=None, title="Preset parameters", description="Parameters of the preset"
     )
 

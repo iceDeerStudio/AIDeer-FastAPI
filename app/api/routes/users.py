@@ -55,7 +55,7 @@ async def read_user_me(user: UserDep):
     return user
 
 
-@router.post(
+@router.put(
     "/me/password",
     response_model=ServerMessage,
     responses=ExceptionResponse.get_responses(400, 401, 404),
@@ -194,7 +194,7 @@ async def delete_user(_admin: AdminDep, user_id: int, session: SessionDep):
     return {"message": "User deleted successfully"}
 
 
-@router.post(
+@router.put(
     "/{user_id}/password",
     response_model=ServerMessage,
     responses=ExceptionResponse.get_responses(401, 403, 404),
@@ -210,7 +210,7 @@ async def reset_user_password(
     db_user.password_hash = get_password_hash(password.new_password)
     session.add(db_user)
     session.commit()
-    return {"message": "Password reset successfully"}
+    return {"message": "Password updated successfully"}
 
 
 @router.get(
