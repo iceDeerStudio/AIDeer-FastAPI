@@ -84,7 +84,8 @@ async def stream_task(task_id: str):
     if task.status != TaskStatus.failed:
         task_streaming = TaskStreaming(task_id)
         headers = {
-            "Content-Type": "text/event-stream",
+            "Content-Type": "text/event-stream; charset=utf-8",
+            "Transfer-Encoding": "chunked",
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
         }
