@@ -39,7 +39,7 @@ async def login_for_access_token(session: SessionDep, login_credentials: LoginDe
 )
 async def wechat_login_for_tokens(session: SessionDep, code: str):
     openid, session_key = await wechat_client_async.wechat_login(code)
-    user = session.exec(select(User).where(User.openid == openid)).one_or_none()
+    user = session.exec(select(User).where(User.wechat_openid == openid)).one_or_none()
     if not user:
         while True:
             username = "wechat_" + str(random.randint(10000000, 99999999))
