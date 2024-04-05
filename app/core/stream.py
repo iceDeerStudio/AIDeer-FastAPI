@@ -56,6 +56,9 @@ class TaskStreaming:
                         task_stream = TaskStream.model_validate_json(message.body)
                         yield f"data: {task_stream.model_dump_json()}\n\n"
                         await asyncio.sleep(0.2)
-                        if task_stream.status == TaskStatus.finished or task_stream.status == TaskStatus.failed:
+                        if (
+                            task_stream.status == TaskStatus.finished
+                            or task_stream.status == TaskStatus.failed
+                        ):
                             break
             yield "event: close\n\n"

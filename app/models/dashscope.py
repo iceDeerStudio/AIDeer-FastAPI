@@ -41,7 +41,7 @@ class ChatGenerationParameters(SQLModel):
     result_format: Optional[ChatGenerationResultFormat] = (
         ChatGenerationResultFormat.message
     )
-    seed: Optional[int] = Field(ge=0, le=2**64 - 1)
+    seed: Optional[int] = Field(ge=0, le=2**63 - 1)
     max_tokens: Optional[int] = Field(gt=0, le=2000)
     top_p: Optional[float] = Field(gt=0, lt=1)
     top_k: Optional[int] = Field(gt=0, le=100)
