@@ -7,7 +7,7 @@ class TaskManager:
 
     @staticmethod
     def get_task(task_id: str) -> Task:
-        status_str = redis_client.hget("tasks", task_id)
+        status_str = redis_client.get(f"task_{task_id}")
         if status_str is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -18,10 +18,11 @@ class TaskManager:
 
     @staticmethod
     def set_task(task_id: str, status: TaskStatus) -> None:
-        redis_client.hset("tasks", task_id, status.value)
+        redis_client.set(f"task_{task_id}", status.value)
+        redis_client.expire(f"task_{task_id}", 3600)
         return None
 
     @staticmethod
     def delete_task(task_id: str) -> None:
-        redis_client.hdel("tasks", task_id)
+        redis_client.delete(f"task_{task_id}")
         return None
