@@ -32,9 +32,9 @@ class PresetParameters(SQLModel):
         description="Model to use for generation",
     )
     seed: Optional[int] = Field(
-        default=random.randint(0, 2**64 - 1),
+        default=random.randint(0, 2**63 - 1),
         ge=0,
-        le=2**64 - 1,
+        le=2**63 - 1,
         title="Random seed",
         description="Random seed for generation",
     )

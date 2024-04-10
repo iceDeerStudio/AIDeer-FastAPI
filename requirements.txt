@@ -12,3 +12,4 @@ Pillow
 dashscope
 aio-pika
 pymysql
+loguru

@@ -22,7 +22,9 @@ from app.models.task import TaskStream, TaskStatus
 from app.core.managers.message import MessageStorage
 from app.core.managers.credit import CreditManager
 from app.core.connections.sql import sqlalchemy_engine
+from app.core.log import logger
 from app.core.config import config
+from pydantic import ValidationError
 from sqlmodel import Session
 import aio_pika
 import aiohttp
@@ -129,12 +131,21 @@ class ChatGeneration:
                         event = line.decode("utf-8").strip()
                         if event.startswith("data:"):
                             event = event[5:]
-                            await self.on_event(event)
+                            if event.strip() == "":
+                                continue
+                            try:
+                                event = ChatGenerationResponse.model_validate_json(
+                                    event
+                                )
+                                await self.on_event(event)
+                            except ValidationError:
+                                await self.on_failure(resp, event)
+                                return
                 else:
-                    await self.on_failure(resp)
+                    await self.on_failure(resp, None)
+                    return
 
-    async def on_event(self, event):
-        response = ChatGenerationResponse.model_validate_json(event)
+    async def on_event(self, response: ChatGenerationResponse):
         await self.exchange.publish(
             aio_pika.Message(
                 body=TaskStream(
@@ -180,8 +191,13 @@ class ChatGeneration:
         )
         TaskManager.set_task(self.task_id, TaskStatus.finished)
 
-    async def on_failure(self, resp: aiohttp.ClientResponse):
-        print(f"Text Generation Request Failed: {resp.status}, {await resp.text()}")
+    async def on_failure(self, resp: aiohttp.ClientResponse, event: str):
+        logger.warning(
+            (
+                f"Text Generation Request Failed: {resp.status}, {event if event else await resp.text()}"
+            )
+        )
+        TaskManager.set_task(self.task_id, TaskStatus.failed)
         await self.exchange.publish(
             aio_pika.Message(
                 body=TaskStream(
@@ -194,4 +210,3 @@ class ChatGeneration:
             ),
             routing_key=f"streaming_{self.task_id}",
         )
-        raise Exception(f"Text Generation Request Failed: {resp.status}")
