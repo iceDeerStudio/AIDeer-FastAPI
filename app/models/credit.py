@@ -58,6 +58,7 @@ class RedeemCode(SQLModel):
     value: int = Field(
         title="Redeem value",
         description="The value of the redeem code",
+        gt=0,
     )
 
 

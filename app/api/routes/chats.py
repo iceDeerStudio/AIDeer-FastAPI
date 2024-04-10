@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 from app.models.chat import Chat, ChatCreate, ChatRead, ChatVisibility
+from app.models.preset import Preset
 from app.models.server import ServerMessage, ExceptionDetail
 from app.api.deps import SessionDep, UserDep
 from app.api.resps import ExceptionResponse
@@ -31,9 +32,15 @@ async def list_chats(
 
 
 @router.post(
-    "", response_model=ChatRead, responses=ExceptionResponse.get_responses(401, 403)
+    "",
+    response_model=ChatRead,
+    responses=ExceptionResponse.get_responses(400, 401, 403),
 )
 async def create_chat(session: SessionDep, user: UserDep, chat: ChatCreate):
+    if session.get(Preset, chat.preset_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Preset not found"
+        )
     db_chat = Chat(**chat.model_dump(), owner_id=user.id)
     session.add(db_chat)
     session.commit()
@@ -82,11 +89,15 @@ async def read_chat(chat_id: str, session: SessionDep, user: UserDep):
 @router.put(
     "/{chat_id}",
     response_model=ChatRead,
-    responses=ExceptionResponse.get_responses(401, 403, 404),
+    responses=ExceptionResponse.get_responses(400, 401, 403, 404),
 )
 async def update_chat(
     chat_id: str, chat: ChatCreate, session: SessionDep, user: UserDep
 ):
+    if session.get(Preset, chat.preset_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Preset not found"
+        )
     db_chat = session.get(Chat, chat_id)
     if db_chat is None:
         raise HTTPException(

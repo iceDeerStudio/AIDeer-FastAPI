@@ -6,7 +6,7 @@ from fastapi import HTTPException
 class RedeemCodeNotFound(HTTPException):
     def __init__(self, code: str):
         self.code = code
-        super().__init__(status_code=422, detail=f"Redeem code not found: {code}")
+        super().__init__(status_code=422, detail=f"Invalid redeem code: {code}")
 
 
 class RedeemManager:

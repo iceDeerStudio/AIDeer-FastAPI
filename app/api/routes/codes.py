@@ -1,5 +1,5 @@
 from app.core.managers.redeem import RedeemManager
-from app.api.deps import AdminDep
+from app.api.deps import AdminDep, SessionDep
 from app.api.resps import ExceptionResponse
 from app.models.credit import RedeemCode
 from app.models.server import ServerMessage
@@ -11,7 +11,7 @@ router = APIRouter()
 @router.get(
     "/{code}", response_model=RedeemCode, responses=ExceptionResponse.get_responses(422)
 )
-async def read_redeem_code(code: str):
+async def read_redeem_code(_user: SessionDep, code: str):
     value = RedeemManager.check_redeem_code(code)
     return {"redeem_code": code, "value": value}
 
