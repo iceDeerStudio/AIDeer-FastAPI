@@ -36,14 +36,26 @@ class User(UserBase, table=True):
         max_length=255,
         min_length=10,
     )
-    credit_records: List["CreditRecord"] = Relationship(back_populates="user")
+    credit_records: List["CreditRecord"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
     credits_left: int = Field(
         default=0,
         title="Credits left",
         description="The amount of credits left",
     )
-    chats: List["Chat"] = Relationship(back_populates="owner")
-    presets: List["Preset"] = Relationship(back_populates="owner")
+    chats: List["Chat"] = Relationship(
+        back_populates="owner", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    presets: List["Preset"] = Relationship(
+        back_populates="owner", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    liked_presets: List["PresetLikeRecord"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    liked_chats: List["ChatLikeRecord"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 
 class UserCreate(UserBase):
@@ -71,6 +83,7 @@ class UserRead(UserBase):
 from .credit import CreditRecord
 from .chat import Chat
 from .preset import Preset
+from .like import PresetLikeRecord, ChatLikeRecord
 
 # Rebuild Models
 User.model_rebuild()

@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship, func
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from uuid import UUID, uuid4
 from enum import Enum
@@ -105,6 +105,14 @@ class Preset(PresetBase, table=True):
     parameters: Optional[str] = Field(
         default=None, title="Preset parameters", description="Parameters of the preset"
     )
+    like_records: List["PresetLikeRecord"] = Relationship(
+        back_populates="preset",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+    chats_used: List["Chat"] = Relationship(
+        back_populates="preset",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
     create_time: datetime = Field(default_factory=datetime.now)
     update_time: datetime = Field(
         default_factory=datetime.now, sa_column_kwargs={"onupdate": func.now()}
@@ -136,6 +144,8 @@ class PresetRead(PresetBase):
 # Import Models
 from .message import Messages
 from .user import User
+from .chat import Chat
+from .like import PresetLikeRecord
 
 # Rebuild Models
 Preset.model_rebuild()

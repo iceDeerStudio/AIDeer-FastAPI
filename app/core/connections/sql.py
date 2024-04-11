@@ -16,6 +16,7 @@ def init_db():
         credit,
         dashscope,
         task,
+        like,
     )
 
     SQLModel.metadata.create_all(sqlalchemy_engine)

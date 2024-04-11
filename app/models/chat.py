@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship, func
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from uuid import UUID, uuid4
 from enum import Enum
@@ -35,7 +35,10 @@ class Chat(ChatBase, table=True):
         title="Owner ID", description="Owner's unique identifier", foreign_key="user.id"
     )
     owner: "User" = Relationship(back_populates="chats")
-    preset: "Preset" = Relationship()
+    preset: "Preset" = Relationship(back_populates="chats_used")
+    like_records: List["ChatLikeRecord"] = Relationship(
+        back_populates="chat", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
     create_time: datetime = Field(default_factory=datetime.now)
     update_time: datetime = Field(
         default_factory=datetime.now, sa_column_kwargs={"onupdate": func.now()}
@@ -62,6 +65,7 @@ class ChatRead(ChatBase):
 from .message import Messages
 from .user import User
 from .preset import Preset
+from .like import ChatLikeRecord
 
 # Rebuild Models
 Chat.model_rebuild()
