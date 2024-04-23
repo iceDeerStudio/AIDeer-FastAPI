@@ -11,6 +11,7 @@ from app.core.config import config
 from sqlmodel import select
 
 router = APIRouter()
+router.include_router(me.router, prefix="/me")
 
 
 @router.get(
@@ -143,6 +144,3 @@ async def get_user_avatar(_user: UserDep, user_id: int, session: SessionDep):
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
     return RedirectResponse(f"{config.api_base_url}{db_user.avatar}")
-
-
-router.include_router(me.router, prefix="/me")
