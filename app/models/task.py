@@ -10,6 +10,12 @@ class TaskStatus(str, Enum):
     failed = "failed"
 
 
+class TaskType(str, Enum):
+    chat_generation = "chat_generation"
+    title_generation = "title_generation"
+    image_generation = "image_generation"
+
+
 class Task(SQLModel):
     task_id: str
     status: TaskStatus = Field(default=TaskStatus.pending)
@@ -17,9 +23,13 @@ class Task(SQLModel):
 
 class TaskCreate(SQLModel):
     chat_id: str
+    type: TaskType
 
 
 class TaskStream(SQLModel):
-    task_id: str
     status: TaskStatus
     content: Optional[str] = None
+
+
+class TaskFinish(TaskStream):
+    token_cost: int

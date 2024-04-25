@@ -17,7 +17,7 @@ class TaskStreaming:
     connection: AbstractConnection
     channel: AbstractChannel
     queue: AbstractQueue
-    lter: AbstractQueueIterator
+    iter: AbstractQueueIterator
 
     def __init__(self, task_id: str):
         self.task_id = task_id
@@ -39,10 +39,10 @@ class TaskStreaming:
         self.connection = await get_rabbitmq_connection()
         self.channel = await self.connection.channel()
         self.queue = await self.channel.declare_queue(f"streaming_{self.task_id}")
-        self.lter = self.queue.iterator()
+        self.iter = self.queue.iterator()
 
     async def close(self):
-        await self.lter.close()
+        await self.iter.close()
         await self.queue.delete()
         await self.channel.close()
         redis_client.hdel("streaming_locks", self.task_id)
@@ -50,7 +50,7 @@ class TaskStreaming:
     async def iterator(self) -> AsyncIterator:
         async with self:
             yield "event: open\n\n"
-            async for message in self.lter:
+            async for message in self.iter:
                 async with message.process():
                     if message.body:
                         task_stream = TaskStream.model_validate_json(message.body)

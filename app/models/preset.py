@@ -69,6 +69,14 @@ class PresetParameters(SQLModel):
         description="Temperature for generation",
     )
 
+    def get_token_cost_multiplier(self):
+        if self.model == PresetModel.qwen_turbo:
+            return 1
+        elif self.model == PresetModel.qwen_plus:
+            return 2.5
+        elif self.model == PresetModel.qwen_max:
+            return 15
+
 
 class PresetBase(SQLModel):
     title: str = Field(

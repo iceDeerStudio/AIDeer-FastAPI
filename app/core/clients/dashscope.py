@@ -1,10 +1,4 @@
-from app.core.connections.rabbitmq import get_rabbitmq_connection
 from app.core.config import config
-from aio_pika.abc import (
-    AbstractChannel,
-    AbstractExchange,
-    AbstractQueue,
-)
 from app.models.dashscope import (
     ChatGenerationRequest,
     ChatGenerationResponse,
@@ -14,106 +8,74 @@ from app.models.dashscope import (
     ChatGenerationModel,
     ChatGenerationFinishReason,
 )
-from app.core.managers.task import TaskManager, TaskStatus
 from app.models.message import Message
-from app.models.chat import Chat
 from app.models.preset import PresetParameters
-from app.models.task import TaskStream, TaskStatus
-from app.core.managers.message import MessageStorage
-from app.core.managers.credit import CreditManager
-from app.core.connections.sql import sqlalchemy_engine
+from app.models.task import TaskStream, TaskStatus, TaskFinish
 from app.core.log import logger
 from app.core.config import config
 from pydantic import ValidationError
-from sqlmodel import Session
-import aio_pika
+from typing import Callable, Awaitable
 import aiohttp
 
 
 class ChatGeneration:
     api_key: str
-    user_id: int
-    task_id: str
-    chat_id: str
     base_url: str
-    channel: AbstractChannel
-    exchange: AbstractExchange
-    queue: AbstractQueue
+    status_callback: Callable[[TaskStatus], Awaitable[None]]
+    finish_callback: Callable[[TaskFinish], Awaitable[None]]
+    streaming_callback: Callable[[TaskStream], Awaitable[None]]
 
     def __init__(
         self,
-        user_id: int,
-        task_id: str,
-        chat_id: str,
         base_url: str = config.dashscope_base_url,
         api_key: str = config.dashscope_api_key,
     ):
-        self.user_id = user_id
-        self.task_id = task_id
-        self.chat_id = chat_id
         self.base_url = base_url
         self.api_key = api_key
 
-    async def __aenter__(self):
-        await self.init_rabbitmq()
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        await self.close_rabbitmq()
-
-    async def build_request(self):
-        with Session(sqlalchemy_engine) as session:
-            chat = session.get(Chat, self.chat_id)
-            preset = chat.preset
-
-        preset_messages = MessageStorage.get_messages(chat.preset_id)
-        chat_messages = MessageStorage.get_messages(self.chat_id)
-
-        preset_params = PresetParameters.model_validate_json(preset.parameters)
+    def build_request(
+        self, messages: list[Message], preset_params: PresetParameters
+    ) -> ChatGenerationRequest:
         model = ChatGenerationModel(preset_params.model)
         params = ChatGenerationParameters.model_validate(preset_params.model_dump())
         input = ChatGenerationInput(
             messages=[
                 ChatGenerationMessage.model_validate(message.model_dump())
-                for message in preset_messages + chat_messages
+                for message in messages
             ]
         )
-
         request = ChatGenerationRequest(
             model=model,
             input=input,
             parameters=params,
         )
-
         return request
 
-    async def init_rabbitmq(self):
-        # Initialize RabbitMQ
-        self.connection = await get_rabbitmq_connection()
-        self.channel = await self.connection.channel()
-        self.queue = await self.channel.declare_queue(f"streaming_{self.task_id}")
-        self.exchange = await self.channel.declare_exchange(
-            "streaming", aio_pika.ExchangeType.DIRECT
+    async def run(
+        self,
+        messages: list[Message],
+        preset_params: PresetParameters,
+        status_callback: Callable[[TaskStatus], None] = None,
+        finish_callback: Callable[[TaskFinish], None] = None,
+        streaming_callback: Callable[[TaskStream], None] = None,
+    ) -> str:
+        self.status_callback = status_callback
+        self.finish_callback = finish_callback
+        self.streaming_callback = streaming_callback
+
+        request = self.build_request(messages, preset_params)
+
+        await self.send_request(
+            request, enable_sse=True if streaming_callback else False
         )
-        await self.queue.bind(self.exchange, routing_key=f"streaming_{self.task_id}")
 
-    async def close_rabbitmq(self):
-        # Close RabbitMQ
-        await self.queue.unbind(self.exchange, routing_key=f"streaming_{self.task_id}")
-        await self.channel.close()
-
-    async def run(self):
-        async with self:
-            # Set Task Status
-            TaskManager.set_task(self.task_id, TaskStatus.running)
-
-            # Build Text Generation Request
-            request = await self.build_request()
-
-            # Request Text Generation
-            await self.send_request(request)
-
-    async def send_request(self, data: ChatGenerationRequest, enable_sse: bool = True):
+    async def send_request(
+        self,
+        data: ChatGenerationRequest,
+        enable_sse: bool = True,
+    ):
+        if self.status_callback:
+            await self.status_callback(TaskStatus.running)
         url = f"{self.base_url}/services/aigc/text-generation/generation"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -126,70 +88,45 @@ class ChatGeneration:
             async with session.post(
                 url, data=data.model_dump_json(exclude_none=True)
             ) as resp:
-                if resp.status == 200:
-                    async for line in resp.content:
-                        event = line.decode("utf-8").strip()
-                        if event.startswith("data:"):
-                            event = event[5:]
-                            if event.strip() == "":
-                                continue
-                            try:
-                                event = ChatGenerationResponse.model_validate_json(
-                                    event
-                                )
-                                await self.on_event(event)
-                            except ValidationError:
-                                await self.on_failure(resp, event)
-                                return
-                else:
-                    await self.on_failure(resp, None)
+                if resp.status != 200:
+                    self.on_failure(resp)
                     return
+                async for line in resp.content:
+                    event = line.decode("utf-8").strip()
+                    if not event.startswith("data:"):
+                        continue
+                    event = event[5:]
+                    if event.strip() == "":
+                        continue
+                    try:
+                        event = ChatGenerationResponse.model_validate_json(event)
+                        await self.on_event(event)
+                    except ValidationError:
+                        self.on_failure(resp)
+                        return
 
     async def on_event(self, response: ChatGenerationResponse):
-        await self.exchange.publish(
-            aio_pika.Message(
-                body=TaskStream(
-                    task_id=self.task_id,
+        if response.output.choices[0].finish_reason != ChatGenerationFinishReason.null:
+            await self.on_finish(response)
+        elif self.streaming_callback:
+            await self.streaming_callback(
+                TaskStream(
                     status=TaskStatus.running,
                     content=response.output.choices[0].message.content,
                 )
-                .model_dump_json()
-                .encode("utf-8"),
-            ),
-            routing_key=f"streaming_{self.task_id}",
-            mandatory=True,
-        )
-        if response.output.choices[0].finish_reason != ChatGenerationFinishReason.null:
-            await self.on_finish(response)
+            )
 
     async def on_finish(self, response: ChatGenerationResponse):
-        await self.exchange.publish(
-            aio_pika.Message(
-                body=TaskStream(
-                    task_id=self.task_id,
+        if self.status_callback:
+            await self.status_callback(TaskStatus.finished)
+        if self.finish_callback:
+            await self.finish_callback(
+                TaskFinish(
                     status=TaskStatus.finished,
-                    content="Text Generation Complete",
+                    content=response.output.choices[0].message.content,
+                    token_cost=response.usage.total_tokens,
                 )
-                .model_dump_json()
-                .encode("utf-8"),
-            ),
-            routing_key=f"streaming_{self.task_id}",
-        )
-        MessageStorage.add_message(
-            chat_id=self.chat_id,
-            message=Message.model_validate(
-                {
-                    **response.output.choices[0].message.model_dump(),
-                    "type": "text",
-                }
-            ),
-        )
-        CreditManager.consume_credit(
-            self.user_id,
-            response.usage.total_tokens,
-            f"Chat Generation: {self.chat_id}",
-        )
-        TaskManager.set_task(self.task_id, TaskStatus.finished)
+            )
 
     async def on_failure(self, resp: aiohttp.ClientResponse, event: str):
         logger.warning(
@@ -197,16 +134,5 @@ class ChatGeneration:
                 f"Text Generation Request Failed: {resp.status}, {event if event else await resp.text()}"
             )
         )
-        TaskManager.set_task(self.task_id, TaskStatus.failed)
-        await self.exchange.publish(
-            aio_pika.Message(
-                body=TaskStream(
-                    task_id=self.task_id,
-                    status=TaskStatus.failed,
-                    content=f"Text Generation Request Failed: {resp.status}",
-                )
-                .model_dump_json()
-                .encode("utf-8"),
-            ),
-            routing_key=f"streaming_{self.task_id}",
-        )
+        if self.status_callback:
+            self.status_callback(TaskStatus.failed)

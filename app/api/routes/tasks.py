@@ -2,15 +2,13 @@ from fastapi import BackgroundTasks, APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 from app.api.deps import UserDep, SessionDep
 from app.api.resps import ExceptionResponse
-from app.models.task import Task, TaskCreate, TaskStatus
+from app.models.task import Task, TaskType, TaskCreate, TaskStatus
 from app.models.server import ServerMessage
 from app.models.chat import Chat
 from app.core.stream import TaskStreaming
 from app.core.managers.task import TaskManager
-from app.core.clients.dashscope import ChatGeneration
-from sqlmodel import select
-
-from uuid import uuid4
+from app.core.tasks.chat_generation import ChatGenerationTask
+from app.core.tasks.title_generation import TitleGenerationTask
 
 router = APIRouter()
 
@@ -26,7 +24,7 @@ async def create_task(
     task: TaskCreate,
     background_tasks: BackgroundTasks,
 ):
-    if user.credits_left <= 0:
+    if user.credits_left <= 0 and user.permission < 2:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Insufficient credits: Please purchase more credits",
@@ -43,11 +41,13 @@ async def create_task(
             detail="Insufficient permissions: You do not have access to this chat",
         )
 
-    uuid = str(uuid4())
-    TaskManager.set_task(uuid, TaskStatus.pending)
-    textgen = ChatGeneration(user_id=user.id, task_id=uuid, chat_id=task.chat_id)
-    background_tasks.add_task(textgen.run)
-    return Task(task_id=uuid, status=TaskStatus.pending)
+    if task.type == TaskType.chat_generation:
+        background_task = ChatGenerationTask()
+    elif task.type == TaskType.title_generation:
+        background_task = TitleGenerationTask()
+
+    background_tasks.add_task(background_task.run, task.chat_id)
+    return Task(task_id=background_task.task_id, status=TaskStatus.pending)
 
 
 @router.get(
