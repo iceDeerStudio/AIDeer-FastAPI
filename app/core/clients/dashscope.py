@@ -91,19 +91,27 @@ class ChatGeneration:
                 if resp.status != 200:
                     self.on_failure(resp)
                     return
-                async for line in resp.content:
-                    event = line.decode("utf-8").strip()
-                    if not event.startswith("data:"):
-                        continue
-                    event = event[5:]
-                    if event.strip() == "":
-                        continue
-                    try:
-                        event = ChatGenerationResponse.model_validate_json(event)
+                if enable_sse:
+                    async for line in resp.content:
+                        event = line.decode("utf-8").strip()
+                        if not event.startswith("data:"):
+                            continue
+                        event = event[5:]
+                        if event.strip() == "":
+                            continue
+                        try:
+                            event = ChatGenerationResponse.model_validate_json(event)
+                        except ValidationError:
+                            self.on_failure(resp)
+                            return
                         await self.on_event(event)
+                else:
+                    event = await resp.json()
+                    try:
+                        event = ChatGenerationResponse.model_validate(event)
                     except ValidationError:
-                        self.on_failure(resp)
-                        return
+                        self.on_failure(resp, await resp.text())
+                    await self.on_event(event)
 
     async def on_event(self, response: ChatGenerationResponse):
         if response.output.choices[0].finish_reason != ChatGenerationFinishReason.null:

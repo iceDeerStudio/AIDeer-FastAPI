@@ -86,7 +86,6 @@ class ChatGenerationTask:
         )
 
     async def run(self, chat_id: str):
-        self.task_id = str(uuid4())
         self.chat_id = chat_id
 
         with Session(sqlalchemy_engine) as session:
