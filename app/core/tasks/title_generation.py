@@ -24,7 +24,7 @@ class TitleGenerationTask:
         TaskManager.set_task(self.task_id, status)
 
     async def on_finish(self, task_finish: TaskFinish):
-        TaskManager.set_task(self.task_id, task_finish)
+        TaskManager.set_task(self.task_id, task_finish.status)
         CreditManager.consume_credit(
             user_id=self.user_id,
             amount=task_finish.token_cost,

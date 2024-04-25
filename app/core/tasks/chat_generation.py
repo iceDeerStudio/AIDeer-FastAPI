@@ -62,7 +62,7 @@ class ChatGenerationTask:
             ),
             routing_key=f"streaming_{self.task_id}",
         )
-        TaskManager.set_task(self.task_id, TaskStatus.finished, task_finish)
+        TaskManager.set_task(self.task_id, TaskStatus.finished)
         CreditManager.consume_credit(
             user_id=self.user_id,
             amount=task_finish.token_cost * self.token_cost_multiplier,
