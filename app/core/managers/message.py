@@ -24,7 +24,7 @@ class MessageStorage:
     def get_messages(chat_id: str | UUID) -> list[Message]:
         messages_str = redis_client.hget(f"messages", chat_id)
         if messages_str:
-            return Messages.model_validate_json(messages_str)
+            return Messages.model_validate_json(messages_str).root
         raise ValueError("Chat Messages not found")
 
     @staticmethod
