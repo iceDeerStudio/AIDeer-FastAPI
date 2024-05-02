@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
-from sqlmodel import select, or_, and_
+from sqlmodel import select, or_, and_, asc, desc
 from app.models.preset import (
     Preset,
     PresetCreate,
@@ -8,6 +8,7 @@ from app.models.preset import (
     PresetParameters,
 )
 from app.models.server import ServerMessage
+from app.models.order import OrderBy, Order
 from app.api.deps import SessionDep, UserDep
 from app.api.resps import ExceptionResponse
 from app.core.managers.message import MessageStorage
@@ -20,8 +21,19 @@ router = APIRouter()
     "", response_model=list[PresetRead], responses=ExceptionResponse.get_responses(401)
 )
 async def list_presets(
-    session: SessionDep, user: UserDep, offset: int = 0, limit: int = 10
+    session: SessionDep,
+    user: UserDep,
+    offset: int = 0,
+    limit: int = 10,
+    order_by: OrderBy = OrderBy.CREATE_TIME,
+    order: Order = Order.DESC,
 ):
+    order_expr = (
+        asc(getattr(Preset, order_by.value))
+        if order == Order.ASC
+        else desc(getattr(Preset, order_by.value))
+    )
+
     presets = session.exec(
         select(Preset)
         .where(
@@ -33,6 +45,7 @@ async def list_presets(
                 ),
             )
         )
+        .order_by(order_expr)
         .offset(offset)
         .limit(limit)
     )

@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, status
 from app.models.chat import Chat, ChatCreate, ChatRead, ChatVisibility
 from app.models.preset import Preset
-from app.models.server import ServerMessage, ExceptionDetail
+from app.models.server import ServerMessage
+from app.models.order import OrderBy, Order
 from app.api.deps import SessionDep, UserDep
 from app.api.resps import ExceptionResponse
 from app.core.managers.message import MessageStorage
-from sqlmodel import select
+from sqlmodel import select, asc, desc
 from datetime import datetime
 
 router = APIRouter()
@@ -17,11 +18,27 @@ router = APIRouter()
     responses=ExceptionResponse.get_responses(401, 403),
 )
 async def list_chats(
-    session: SessionDep, user: UserDep, offset: int = 0, limit: int = 10
+    session: SessionDep,
+    user: UserDep,
+    offset: int = 0,
+    limit: int = 10,
+    order_by: OrderBy = OrderBy.CREATE_TIME,
+    order: Order = Order.DESC,
 ):
-    chats = session.exec(
-        select(Chat).where(Chat.owner_id == user.id).offset(offset).limit(limit)
+    order_expr = (
+        asc(getattr(Chat, order_by.value))
+        if order == Order.ASC
+        else desc(getattr(Chat, order_by.value))
     )
+
+    chats = session.exec(
+        select(Chat)
+        .where(Chat.owner_id == user.id)
+        .order_by(order_expr)
+        .offset(offset)
+        .limit(limit)
+    )
+
     return [
         {
             **chat.model_dump(),
