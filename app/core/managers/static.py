@@ -37,9 +37,9 @@ class StaticFilesManager:
             image = Image.open(file)
             image.thumbnail(size)
             image_bytes = BytesIO()
-            image.save(image_bytes, format="JPEG")
+            image.save(image_bytes, format="WEBP")
         file_hash = hashlib.sha256(image_bytes.getvalue()).hexdigest()
-        file_path = f"{config.static_dir}/avatars/{file_hash}.jpg"
+        file_path = f"{config.static_dir}/avatars/{file_hash}.webp"
         with open(file_path, "wb") as file:
             file.write(image_bytes.getvalue())
-        return f"{config.static_url}/avatars/{file_hash}.jpg"
+        return f"{config.static_url}/avatars/{file_hash}.webp"

@@ -32,7 +32,7 @@ class User(UserBase, table=True):
     wechat_openid: Optional[str] = Field(default=None, nullable=True)
     wechat_session_key: Optional[str] = Field(default=None, nullable=True)
     avatar: str = Field(
-        default="/static/avatars/default.jpg",
+        default="/static/avatars/default.webp",
         max_length=255,
         min_length=10,
     )
