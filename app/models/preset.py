@@ -23,11 +23,13 @@ class PresetModel(str, Enum):
     qwen_max = "qwen-max"
     qwen_max_1201 = "qwen-max-1201"
     qwen_max_longcontext = "qwen-max-longcontext"
+    deepseek_chat = "deepseek-chat"
+    gpt_3_5_turbo = "gpt-3.5-turbo"
 
 
 class PresetParameters(SQLModel):
     model: Optional[PresetModel] = Field(
-        default=PresetModel.qwen_turbo,
+        default=PresetModel.deepseek_chat,
         title="Model name",
         description="Model to use for generation",
     )
@@ -70,12 +72,34 @@ class PresetParameters(SQLModel):
     )
 
     def get_token_cost_multiplier(self):
-        if self.model == PresetModel.qwen_turbo:
+        if self.model == PresetModel.deepseek_chat:
             return 1
+        elif self.model == PresetModel.qwen_turbo:
+            return 4
         elif self.model == PresetModel.qwen_plus:
-            return 2.5
+            return 10
+        elif self.model == PresetModel.gpt_3_5_turbo:
+            return 11
         elif self.model == PresetModel.qwen_max:
-            return 15
+            return 60
+        else:
+            raise ValueError("Invalid model")
+        
+    def get_model_provider(self):
+        if self.model in [
+            PresetModel.qwen_turbo,
+            PresetModel.qwen_plus,
+            PresetModel.qwen_max,
+            PresetModel.qwen_max_1201,
+            PresetModel.qwen_max_longcontext,
+        ]:
+            return "dashscope"
+        elif self.model == PresetModel.deepseek_chat:
+            return "deepseek"
+        elif self.model == PresetModel.gpt_3_5_turbo:
+            return "openai"
+        else:
+            raise ValueError("Invalid model")
 
 
 class PresetBase(SQLModel):

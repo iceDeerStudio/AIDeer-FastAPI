@@ -1,0 +1,80 @@
+from app.models.task import TaskStream, TaskStatus, TaskFinish
+from app.models.preset import PresetParameters
+from app.models.message import Message
+from app.core.clients.base_clients import ChatGenerationClient
+from app.core.config import config
+from app.core.log import logger
+from openai import AsyncOpenAI, APIError
+
+from typing import List, Awaitable, Callable
+
+
+class ChatGenerationOpenAIClient(ChatGenerationClient):
+    api_key: str
+    base_url: str
+    client: AsyncOpenAI
+    status_callback: Callable[[TaskStatus], Awaitable[None]]
+    finish_callback: Callable[[TaskFinish], Awaitable[None]]
+    streaming_callback: Callable[[TaskStream], Awaitable[None]]
+
+    def __init__(
+        self,
+        api_key: str = config.openai_api_key,
+        base_url: str = config.openai_base_url,
+    ):
+        self.api_key = api_key
+        self.base_url = base_url
+        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+
+    async def run_generate(
+        self,
+        messages: List[Message],
+        preset_params: PresetParameters,
+        status_callback: Callable[[TaskStatus], Awaitable[None]] = None,
+        finish_callback: Callable[[TaskFinish], Awaitable[None]] = None,
+        streaming_callback: Callable[[TaskStream], Awaitable[None]] = None,
+    ):
+        self.status_callback = status_callback
+        self.finish_callback = finish_callback
+        self.streaming_callback = streaming_callback
+
+        chat_messages = [
+            {"role": message.role, "content": message.content} for message in messages
+        ]
+
+        try:
+            response = await self.client.chat.completions.create(
+                messages=chat_messages,
+                stream=True if streaming_callback else False,
+                **preset_params,
+            )
+
+            async for chunk in response:
+                if chunk.choices[0].finish_reason in [
+                    "stop",
+                    "length",
+                    "content_filter",
+                ]:
+                    await self.finish_callback(
+                        TaskFinish(
+                            status=TaskStatus.finished,
+                            content=chunk.choices[0].delta.content,
+                            token_cost=chunk.usage.total_tokens,
+                        )
+                    )
+                    break
+                elif chunk.choices[0].finish_reason in [None, "null"]:
+                    await self.streaming_callback(
+                        TaskStream(
+                            status=TaskStatus.running,
+                            content=chunk.choices[0].delta.content,
+                        )
+                    )
+                else:
+                    logger.error(
+                        f"Unexpected finish reason: {chunk.choices[0].finish_reason}"
+                    )
+                    await self.status_callback(TaskStatus.failed)
+        except APIError as e:
+            logger.error(f"OpenAI API error, code: {e.code}, message: {e.message}")
+            await self.status_callback(TaskStatus.failed)

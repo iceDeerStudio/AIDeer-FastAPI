@@ -45,6 +45,14 @@ class Config(BaseSettings):
     dashscope_base_url: str = Field(default="https://dashscope.aliyuncs.com/api/v1")
     dashscope_api_key: str = ""
 
+    # DeepSeek settings
+    deepseek_base_url: str = Field(default="https://api.deepseek.com/")
+    deepseek_api_key: str = ""
+
+    # OpenAI settings
+    openai_base_url: str = Field(default="https://api.openai.com/v1")
+    openai_api_key: str = ""
+
     # Admin credentials
     admin_user: str = Field(default="admin", max_length=50, min_length=2)
     admin_passwd: str = Field(default="admin123", max_length=255, min_length=6)

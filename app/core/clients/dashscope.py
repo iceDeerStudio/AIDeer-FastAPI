@@ -1,4 +1,3 @@
-from app.core.config import config
 from app.models.dashscope import (
     ChatGenerationRequest,
     ChatGenerationResponse,
@@ -11,6 +10,7 @@ from app.models.dashscope import (
 from app.models.message import Message
 from app.models.preset import PresetParameters
 from app.models.task import TaskStream, TaskStatus, TaskFinish
+from app.core.clients.base_clients import ChatGenerationClient
 from app.core.log import logger
 from app.core.config import config
 from pydantic import ValidationError
@@ -18,7 +18,7 @@ from typing import Callable, Awaitable
 import aiohttp
 
 
-class ChatGeneration:
+class ChatGenerationDashscopeClient(ChatGenerationClient):
     api_key: str
     base_url: str
     status_callback: Callable[[TaskStatus], Awaitable[None]]
@@ -51,17 +51,17 @@ class ChatGeneration:
         )
         return request
 
-    async def run(
+    async def run_generate(
         self,
         messages: list[Message],
         preset_params: PresetParameters,
         status_callback: Callable[[TaskStatus], None] = None,
         finish_callback: Callable[[TaskFinish], None] = None,
         streaming_callback: Callable[[TaskStream], None] = None,
-    ) -> str:
-        self.status_callback = status_callback
-        self.finish_callback = finish_callback
-        self.streaming_callback = streaming_callback
+    ):
+        self.status_callback = (status_callback,)
+        self.finish_callback = (finish_callback,)
+        self.streaming_callback = (streaming_callback,)
 
         request = self.build_request(messages, preset_params)
 

@@ -3,7 +3,9 @@ from app.core.connections.sql import sqlalchemy_engine
 from app.core.managers.task import TaskManager
 from app.core.managers.credit import CreditManager
 from app.core.managers.message import MessageStorage
-from app.core.clients.dashscope import ChatGeneration
+from app.core.managers.client import ChatGenerationClientManager
+from app.core.tasks.base_task import BaseTask
+from app.core.config import config
 from app.models.task import TaskStatus, TaskFinish, TaskStream
 from app.models.chat import Chat
 from app.models.preset import PresetParameters
@@ -14,21 +16,16 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 from sqlmodel import Session
-from uuid import uuid4
 import aio_pika
 
 
-class ChatGenerationTask:
-    task_id: str
+class ChatGenerationTask(BaseTask):
     chat_id: str
     user_id: int
     token_cost_multiplier: float
     exchange: AbstractExchange
     channel: AbstractChannel
     queue: AbstractQueue
-
-    def __init__(self):
-        self.task_id = str(uuid4())
 
     async def __aenter__(self):
         await self.init_rabbitmq()
@@ -52,17 +49,14 @@ class ChatGenerationTask:
         await self.queue.unbind(self.exchange, routing_key=f"streaming_{self.task_id}")
         await self.channel.close()
 
-    async def on_status(self, status: TaskStatus):
-        TaskManager.set_task(self.task_id, status)
-
     async def on_finish(self, task_finish: TaskFinish):
+        await super().on_finish(task_finish)
         await self.exchange.publish(
             aio_pika.Message(
                 body=task_finish.model_dump_json().encode(encoding="utf-8")
             ),
             routing_key=f"streaming_{self.task_id}",
         )
-        TaskManager.set_task(self.task_id, TaskStatus.finished)
         CreditManager.consume_credit(
             user_id=self.user_id,
             amount=task_finish.token_cost * self.token_cost_multiplier,
@@ -101,13 +95,15 @@ class ChatGenerationTask:
         preset_messages = MessageStorage.get_messages(chat.preset_id)
         messages = preset_messages + chat_messages
 
-        chat_generation = ChatGeneration()
+        client = ChatGenerationClientManager.get_client(
+            preset_params.get_model_provider()
+        )
 
         async with self:
             await self.on_status(TaskStatus.pending)
 
             try:
-                await chat_generation.run(
+                await client.run_generate(
                     messages=messages,
                     preset_params=preset_params,
                     status_callback=self.on_status,

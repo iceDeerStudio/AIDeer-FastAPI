@@ -1,30 +1,23 @@
 from app.core.connections.sql import sqlalchemy_engine
-from app.core.clients.dashscope import ChatGeneration
 from app.core.managers.message import MessageStorage
 from app.core.managers.task import TaskManager
 from app.core.managers.credit import CreditManager
+from app.core.managers.client import ChatGenerationClientManager
+from app.core.tasks.base_task import BaseTask
 from app.models.chat import Chat
 from app.models.message import Message, MessageRole, MessageType
 from app.models.preset import PresetParameters
 from app.models.task import TaskStatus, TaskFinish
 from app.core.config import config
 from sqlmodel import Session
-from uuid import uuid4
 
 
-class TitleGenerationTask:
-    task_id: str
+class TitleGenerationTask(BaseTask):
     chat_id: str
     user_id: int
 
-    def __init__(self):
-        self.task_id = str(uuid4())
-
-    async def on_status(self, status: TaskStatus):
-        TaskManager.set_task(self.task_id, status)
-
     async def on_finish(self, task_finish: TaskFinish):
-        TaskManager.set_task(self.task_id, task_finish.status)
+        await super().on_finish(task_finish)
         CreditManager.consume_credit(
             user_id=self.user_id,
             amount=task_finish.token_cost,
@@ -56,11 +49,13 @@ class TitleGenerationTask:
 
         messages = preset_messages + chat_messages + [question_message]
 
-        textgen = ChatGeneration()
+        client = ChatGenerationClientManager.get_client(
+            preset_params.get_model_provider()
+        )
 
         await self.on_status(TaskStatus.pending)
 
-        await textgen.run(
+        await client.run_generate(
             messages=messages,
             preset_params=preset_params,
             status_callback=self.on_status,
