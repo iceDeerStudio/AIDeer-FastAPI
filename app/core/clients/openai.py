@@ -46,7 +46,7 @@ class ChatGenerationOpenAIClient(ChatGenerationClient):
             response = await self.client.chat.completions.create(
                 messages=chat_messages,
                 stream=True if streaming_callback else False,
-                **preset_params,
+                **preset_params.model_dump(),
             )
 
             async for chunk in response:
