@@ -59,9 +59,9 @@ class ChatGenerationDashscopeClient(ChatGenerationClient):
         finish_callback: Callable[[TaskFinish], None] = None,
         streaming_callback: Callable[[TaskStream], None] = None,
     ):
-        self.status_callback = (status_callback,)
-        self.finish_callback = (finish_callback,)
-        self.streaming_callback = (streaming_callback,)
+        self.status_callback = status_callback
+        self.finish_callback = finish_callback
+        self.streaming_callback = streaming_callback
 
         request = self.build_request(messages, preset_params)
 
