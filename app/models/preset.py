@@ -63,6 +63,20 @@ class PresetParameters(SQLModel):
         title="Repetition penalty",
         description="Repetition penalty for generation",
     )
+    frequency_penalty: Optional[float] = Field(
+        default=0,
+        ge=-2,
+        le=2,
+        title="Frequency penalty",
+        description="Frequency penalty for generation",
+    )
+    presence_penalty: Optional[float] = Field(
+        default=0,
+        ge=-2,
+        le=2,
+        title="Presence penalty",
+        description="Presence penalty for generation",
+    )
     temperature: Optional[float] = Field(
         default=0.85,
         ge=0,
@@ -84,7 +98,7 @@ class PresetParameters(SQLModel):
             return 60
         else:
             raise ValueError("Invalid model")
-        
+
     def get_model_provider(self):
         if self.model in [
             PresetModel.qwen_turbo,
