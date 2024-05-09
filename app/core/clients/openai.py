@@ -67,7 +67,7 @@ class ChatGenerationOpenAIClient(ChatGenerationClient):
                     TaskFinish(
                         status=TaskStatus.finished,
                         content=full_content,
-                        token_cost=response.choices[0].usage.total_tokens,
+                        token_cost=response.usage.total_tokens,
                     )
                 )
                 return
