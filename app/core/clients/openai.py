@@ -51,6 +51,27 @@ class ChatGenerationOpenAIClient(ChatGenerationClient):
                 ),
             )
 
+            if streaming_callback is None:
+                if response.choices[0].finish_reason not in [
+                    "stop",
+                    "length",
+                    "content_filter",
+                ]:
+                    logger.error(
+                        f"Unexpected finish reason: {response.choices[0].finish_reason}"
+                    )
+                    await self.status_callback(TaskStatus.failed)
+                    return
+                full_content = response.choices[0].message.content
+                await self.finish_callback(
+                    TaskFinish(
+                        status=TaskStatus.finished,
+                        content=full_content,
+                        token_cost=response.choices[0].usage.total_tokens,
+                    )
+                )
+                return
+
             full_content = ""
             async for chunk in response:
                 if chunk.choices[0].finish_reason in [
