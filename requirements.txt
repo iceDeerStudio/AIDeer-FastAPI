@@ -13,3 +13,4 @@ dashscope
 aio-pika
 pymysql
 loguru
+openai
