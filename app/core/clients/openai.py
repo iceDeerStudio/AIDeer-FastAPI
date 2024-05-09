@@ -51,25 +51,28 @@ class ChatGenerationOpenAIClient(ChatGenerationClient):
                 ),
             )
 
+            full_content = ""
             async for chunk in response:
                 if chunk.choices[0].finish_reason in [
                     "stop",
                     "length",
                     "content_filter",
                 ]:
+                    full_content += chunk.choices[0].delta.content
                     await self.finish_callback(
                         TaskFinish(
                             status=TaskStatus.finished,
-                            content=chunk.choices[0].delta.content,
+                            content=full_content,
                             token_cost=chunk.usage.total_tokens,
                         )
                     )
                     break
                 elif chunk.choices[0].finish_reason in [None, "null"]:
+                    full_content += chunk.choices[0].delta.content
                     await self.streaming_callback(
                         TaskStream(
                             status=TaskStatus.running,
-                            content=chunk.choices[0].delta.content,
+                            content=full_content,
                         )
                     )
                 else:
