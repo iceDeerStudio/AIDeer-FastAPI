@@ -47,7 +47,7 @@ class ChatGenerationOpenAIClient(ChatGenerationClient):
                 messages=chat_messages,
                 stream=True if streaming_callback else False,
                 **preset_params.model_dump(
-                    exclude={"tok_k", "repitition_penalty"}, exclude_none=True
+                    exclude={"tok_k", "repetition_penalty"}, exclude_none=True
                 ),
             )
 
