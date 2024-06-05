@@ -88,6 +88,7 @@ async def stream_task(task_id: str):
             "Transfer-Encoding": "chunked",
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
         }
         return StreamingResponse(
             task_streaming.iterator(), headers=headers, status_code=200
